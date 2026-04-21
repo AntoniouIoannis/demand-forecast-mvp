@@ -1,0 +1,30 @@
+# Virtual environments — never go into the image
+.venv/
+remote-kernel/
+
+# Git & IDE
+.git/
+.vscode/
+.gitignore
+.markdownlint.json
+
+# Local data files (generated at runtime, not baked into image)
+data/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Source Excel files (large, sensitive, not needed in image)
+*.xlsx
+
+# Docs & scripts not needed at runtime
+*.md
+*.sh
+*.cfg
+.flake8
+.python-version
+design.md
+requirements.md
