@@ -1,5 +1,7 @@
 # Virtual Environment (Το πιο σημαντικό!)
 Johnvenv/
+.venv/
+remote-kernel/
 
 # Python bytecode (Προσωρινά αρχεία εκτέλεσης)
 __pycache__/

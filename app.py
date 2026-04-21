@@ -7,11 +7,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
-from flask import Flask, jsonify, request
+import flask  # pyright: ignore[reportMissingImports]
 
 
 ROOT = Path(__file__).resolve().parent
-app = Flask(__name__)
+app = flask.Flask(__name__)
 
 
 def _run_py(script_name: str, args: List[str]) -> subprocess.CompletedProcess[str]:
@@ -27,12 +27,12 @@ def _require_json_keys(payload: Dict[str, Any], keys: List[str]) -> None:
 
 @app.get("/health")
 def health() -> Any:
-    return jsonify({"status": "ok", "service": "demand-forecast-api"})
+    return flask.jsonify({"status": "ok", "service": "demand-forecast-api"})
 
 
 @app.get("/pipeline")
 def pipeline() -> Any:
-    return jsonify(
+    return flask.jsonify(
         {
             "steps": [
                 {
@@ -69,11 +69,11 @@ def pipeline() -> Any:
 
 @app.post("/preprocess")
 def preprocess() -> Any:
-    payload = request.get_json(silent=True) or {}
+    payload = flask.request.get_json(silent=True) or {}
     try:
         _require_json_keys(payload, ["sales2017", "sales2018", "sales2019"])
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        return flask.jsonify({"error": str(exc)}), 400
 
     outdir = str(payload.get("outdir") or (ROOT / "data"))
     train_end = str(payload.get("train_end") or "2019-04-01")
@@ -104,7 +104,7 @@ def preprocess() -> Any:
 
     proc = _run_py("preprocess_sales.py", args)
     if proc.returncode != 0:
-        return jsonify({"error": "preprocess failed", "stderr": proc.stderr, "stdout": proc.stdout}), 500
+        return flask.jsonify({"error": "preprocess failed", "stderr": proc.stderr, "stdout": proc.stdout}), 500
 
     outdir_path = Path(outdir)
     cutoff = train_end[:7]
@@ -119,16 +119,16 @@ def preprocess() -> Any:
             "panel_csv": str(outdir_path / "item_month_agg_2017_2019_with_roll.csv"),
         },
     }
-    return jsonify(resp)
+    return flask.jsonify(resp)
 
 
 @app.post("/train-evaluate")
 def train_evaluate() -> Any:
-    payload = request.get_json(silent=True) or {}
+    payload = flask.request.get_json(silent=True) or {}
     try:
         _require_json_keys(payload, ["train_csv", "test_csv"])
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        return flask.jsonify({"error": str(exc)}), 400
 
     outdir = str(payload.get("outdir") or (ROOT / "data"))
     args = [
@@ -142,7 +142,7 @@ def train_evaluate() -> Any:
 
     proc = _run_py("train_evaluate_monthly.py", args)
     if proc.returncode != 0:
-        return jsonify({"error": "train-evaluate failed", "stderr": proc.stderr, "stdout": proc.stdout}), 500
+        return flask.jsonify({"error": "train-evaluate failed", "stderr": proc.stderr, "stdout": proc.stdout}), 500
 
     outdir_path = Path(outdir)
     metrics_path = outdir_path / "metrics_overall.json"
@@ -150,7 +150,7 @@ def train_evaluate() -> Any:
     if metrics_path.exists():
         metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
 
-    return jsonify(
+    return flask.jsonify(
         {
             "status": "ok",
             "stdout": proc.stdout,
@@ -166,11 +166,11 @@ def train_evaluate() -> Any:
 
 @app.post("/report-last")
 def report_last() -> Any:
-    payload = request.get_json(silent=True) or {}
+    payload = flask.request.get_json(silent=True) or {}
     try:
         _require_json_keys(payload, ["pred_csv"])
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        return flask.jsonify({"error": str(exc)}), 400
 
     outdir = str(payload.get("outdir") or (ROOT / "data"))
     last_n_months = int(payload.get("last_n_months") or 6)
@@ -186,10 +186,10 @@ def report_last() -> Any:
 
     proc = _run_py("product_last6m_report.py", args)
     if proc.returncode != 0:
-        return jsonify({"error": "report failed", "stderr": proc.stderr, "stdout": proc.stdout}), 500
+        return flask.jsonify({"error": "report failed", "stderr": proc.stderr, "stdout": proc.stdout}), 500
 
     outdir_path = Path(outdir)
-    return jsonify(
+    return flask.jsonify(
         {
             "status": "ok",
             "stdout": proc.stdout,
@@ -203,11 +203,11 @@ def report_last() -> Any:
 
 @app.post("/run-all")
 def run_all() -> Any:
-    payload = request.get_json(silent=True) or {}
+    payload = flask.request.get_json(silent=True) or {}
     try:
         _require_json_keys(payload, ["sales2017", "sales2018", "sales2019"])
     except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
+        return flask.jsonify({"error": str(exc)}), 400
 
     outdir = str(payload.get("outdir") or (ROOT / "data"))
     train_end = str(payload.get("train_end") or "2019-04-01")
@@ -235,7 +235,7 @@ def run_all() -> Any:
 
     preprocess_proc = _run_py("preprocess_sales.py", preprocess_args)
     if preprocess_proc.returncode != 0:
-        return jsonify({"error": "preprocess failed", "stderr": preprocess_proc.stderr}), 500
+        return flask.jsonify({"error": "preprocess failed", "stderr": preprocess_proc.stderr}), 500
 
     cutoff = train_end[:7]
     start = test_start[:7]
@@ -247,7 +247,7 @@ def run_all() -> Any:
         ["--train_csv", str(train_csv), "--test_csv", str(test_csv), "--outdir", outdir],
     )
     if train_proc.returncode != 0:
-        return jsonify({"error": "train-evaluate failed", "stderr": train_proc.stderr}), 500
+        return flask.jsonify({"error": "train-evaluate failed", "stderr": train_proc.stderr}), 500
 
     pred_csv = Path(outdir) / "predictions_test.csv"
     report_proc = _run_py(
@@ -255,14 +255,14 @@ def run_all() -> Any:
         ["--pred_csv", str(pred_csv), "--outdir", outdir, "--last_n_months", str(last_n_months)],
     )
     if report_proc.returncode != 0:
-        return jsonify({"error": "report failed", "stderr": report_proc.stderr}), 500
+        return flask.jsonify({"error": "report failed", "stderr": report_proc.stderr}), 500
 
     metrics = {}
     metrics_path = Path(outdir) / "metrics_overall.json"
     if metrics_path.exists():
         metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
 
-    return jsonify(
+    return flask.jsonify(
         {
             "status": "ok",
             "steps": {
@@ -281,5 +281,5 @@ def run_all() -> Any:
     )
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     app.run(host="0.0.0.0", port=8080, debug=False)
